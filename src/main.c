@@ -137,7 +137,7 @@ int main(int argc, char **argv)
 
 	if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == -1)
 	{
-		perror("cfire: ioctl");
+		perror("kfire: ioctl");
 		return 1;
 	}
 
