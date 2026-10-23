@@ -1,4 +1,5 @@
 #define _DEFAULT_SOURCE
+#define _POSIX_C_SOURCE 199309L
 
 #include <errno.h>
 #include <math.h>
@@ -7,6 +8,7 @@
 #include <string.h>
 #include <time.h>
 
+#include <time.h>
 #include <unistd.h>
 #include <sys/ioctl.h>
 #include <signal.h>
@@ -17,13 +19,24 @@ void print_help(void)
 {
     printf("kfire - Simple fire written in C.\n\n");
     printf("--intensity N   flame intensity (default: 3.0)\n");
-    printf("--color N       fire color, from 1 to 8\n");
+    printf("--speed N       animation speed (default: 6)\n");
+	printf("--color N       fire color, from 1 to 8\n");
 }
 
 static void handle_sigint(int sig)
 {
 	(void)sig;
 	interrupted = 1;
+}
+
+static void sleep_us(long delay)
+{
+	struct timespec time = {
+		.tv_sec = delay / 1000000L,
+		.tv_nsec = (delay % 1000000L) * 1000L
+	};
+
+	nanosleep(&time, NULL);
 }
 
 int main(int argc, char **argv)
@@ -36,6 +49,7 @@ int main(int argc, char **argv)
 	const char chars[] = " .:-=+*#%@";
 
 	double intensity = 3.0;
+	double speed = 6;
 	char *end;
 
 	for (int i = 1; i < argc; i++) {
@@ -58,6 +72,24 @@ int main(int argc, char **argv)
 			}
 		}
 
+		else if (strcmp(argv[i], "--speed") == 0) {
+			if (i + 1 >= argc) {	
+				fprintf(stderr, 
+						"kfire: '--speed' requires a value\n");
+				return 1;
+			}
+
+			char *value = argv[++i];
+			
+			errno = 0;
+			speed = strtol(value, &end, 10);
+		
+			if (*end != '\0' || errno == ERANGE || !isfinite(intensity) || speed <= 0) {
+				fprintf(stderr,
+						"kfire: speed must be a number greater than 0\n");
+				return 1;
+			}
+		}
 
 		else if (strcmp(argv[i], "--color") == 0) {
 			if (i + 1 >= argc) {	
@@ -177,7 +209,14 @@ int main(int argc, char **argv)
 		}
 		
 		fflush(stdout);
-		usleep(100000);
+			
+		long delay = 500000L / speed;
+
+		if (delay < 1)
+			delay = 0;
+
+		sleep_us(delay);
+			
 	}
 
     printf("\033[0m\033[?7h\033[?25h\n");
